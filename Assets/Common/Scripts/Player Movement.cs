@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace Osbert
+namespace Common
 {
     [RequireComponent(typeof(Rigidbody2D))]
     public class PlayerMovement : MonoBehaviour
@@ -56,7 +56,11 @@ namespace Osbert
         void Awake()
         {
             rb = GetComponent<Rigidbody2D>();
-
+            RecalculateParameters();
+        }
+        
+        public void RecalculateParameters()
+        {
             accel = topSpeed / accelerationTime;
             decel = topSpeed / decelerationTime;
 
@@ -64,7 +68,11 @@ namespace Osbert
             gravityDown = (2f * jumpMaxHeight) / (timeToFall * timeToFall);
 
             jumpVelocity = gravityUp * timeToApex;
+
+            if (rb != null)
+                rb.gravityScale = gravityDown / Physics2D.gravity.magnitude;
         }
+
 
         void Update()
         {
