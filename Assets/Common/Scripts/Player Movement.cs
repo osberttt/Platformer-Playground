@@ -1,224 +1,375 @@
-using System;
 using UnityEngine;
 
-namespace Common
+
+[RequireComponent(typeof(Rigidbody2D))]
+public class PlayerMovement : MonoBehaviour
 {
-    [RequireComponent(typeof(Rigidbody2D))]
-    public class PlayerMovement : MonoBehaviour
+    [Header("Walk")]
+    public float topSpeed = 8f;
+    public float accelerationTime = 0.2f;
+    public float decelerationTime = 0.15f;
+
+    [Header("Air Control")]
+    [Range(0f, 1f)] public float airControlMultiplier = 0.5f;
+
+    [Header("Jump")]
+    public float jumpMaxHeight = 4f;
+    public float timeToApex = 0.4f;
+    public float hangTime = 0.1f;
+    public float timeToFall = 0.45f;
+    public int airJumps = 1;
+
+    [Header("Fall")]
+    public float maxFallSpeed = 20f;
+
+    [Header("Forgiveness")]
+    public float coyoteTime = 0.1f;
+    public float jumpBuffer = 0.1f;
+
+    [Header("Dash (Celeste Style)")]
+    public float dashSpeed = 40f;
+    public float dashTime = 0.15f;
+    public float dashFreezeTime = 0.05f;
+    public int maxDashes = 1;
+
+    [Header("Long Dash (Raycast Based)")]
+    public float longDashSpeed = 40f;
+    public float longDashOffset = 1f;
+    public float longDashProbeDistance = 0.2f;
+    public float longDashStopOffset = 0.05f;
+
+    [Header("Checks")]
+    public Transform groundCheck;
+    public Vector2 groundCheckSize = new Vector2(0.6f, 0.1f);
+    public LayerMask groundLayer;
+
+    [Header("Facing")]
+    public bool flipOnInput = true;
+
+    [Header("Controls")]
+    public KeyCode jumpKey = KeyCode.C;
+    public KeyCode dashKey = KeyCode.X;
+    public KeyCode longDashKey = KeyCode.Z;
+
+    Rigidbody2D rb;
+
+    float accel, decel;
+    float jumpVelocity;
+    float gravityUp, gravityDown;
+    float defaultGravity;
+
+    bool isGrounded;
+    bool wasGrounded;
+
+    int jumpsLeft;
+    int dashesLeft;
+
+    float coyoteTimer;
+    float bufferTimer;
+    float hangTimer;
+
+    float inputX;
+    float facingDir = 1f;
+
+    // Dash
+    bool isDashing;
+    bool dashFrozen;
+    Vector2 dashDir;
+    float dashTimer;
+    float dashFreezeTimer;
+
+    // Long dash
+    bool isLongDashing;
+    Vector2 longDashOffsetDir;
+
+    void Awake()
     {
-        [Header("Walk")] public float topSpeed = 8f;
-        public float accelerationTime = 0.2f;
-        public float decelerationTime = 0.15f;
+        rb = GetComponent<Rigidbody2D>();
+        rb.collisionDetectionMode = CollisionDetectionMode2D.Continuous;
+        defaultGravity = rb.gravityScale;
+        RecalculateParameters();
+    }
 
-        [Header("Air Control")] [Range(0f, 1f)]
-        public float airControlMultiplier = 0.5f;
+    public void RecalculateParameters()
+    {
+        accel = topSpeed / accelerationTime;
+        decel = topSpeed / decelerationTime;
 
-        [Header("Jump")] public float jumpMaxHeight = 4f;
-        public float timeToApex = 0.4f;
-        public float hangTime = 0.1f;
-        public float timeToFall = 0.45f;
+        gravityUp = (2f * jumpMaxHeight) / (timeToApex * timeToApex);
+        gravityDown = (2f * jumpMaxHeight) / (timeToFall * timeToFall);
 
-        public int airJumps = 1;
+        jumpVelocity = gravityUp * timeToApex;
+        rb.gravityScale = gravityDown / Physics2D.gravity.magnitude;
+    }
 
-        [Header("Fall")] public float maxFallSpeed = 20f;
+    void Update()
+    {
+        inputX = Input.GetAxisRaw("Horizontal");
 
-        [Header("Player Forgiveness")] public float coyoteTime = 0.1f;
-        public float jumpBuffer = 0.1f;
+        if (Input.GetKeyDown(jumpKey))
+            bufferTimer = jumpBuffer;
+        else
+            bufferTimer -= Time.deltaTime;
 
-        [Header("Checks")] public Transform groundCheck;
-        public Vector2 groundCheckSize = new Vector2(0.6f, 0.1f);
-        public LayerMask groundLayer;
+        if (Input.GetKeyDown(dashKey))
+            TryDash();
 
-        [Header("Facing")] public bool flipOnInput = true;
+        if (Input.GetKeyDown(longDashKey))
+            TryLongDash();
+    }
 
-        Rigidbody2D rb;
+    void FixedUpdate()
+    {
+        CheckEnvironment();
+        HandleTimers();
 
-        float accel;
-        float decel;
-
-        float jumpVelocity;
-        float gravityUp;
-        float gravityDown;
-
-        bool isGrounded;
-        bool wasGrounded;
-
-        int jumpsLeft;
-
-        float coyoteTimer;
-        float bufferTimer;
-        float hangTimer;
-
-        float inputX;
-
-        float facingDir = 1f;
-
-        void Awake()
+        if (isLongDashing)
         {
-            rb = GetComponent<Rigidbody2D>();
-            RecalculateParameters();
-        }
-        
-        public void RecalculateParameters()
-        {
-            accel = topSpeed / accelerationTime;
-            decel = topSpeed / decelerationTime;
-
-            gravityUp = (2f * jumpMaxHeight) / (timeToApex * timeToApex);
-            gravityDown = (2f * jumpMaxHeight) / (timeToFall * timeToFall);
-
-            jumpVelocity = gravityUp * timeToApex;
-
-            if (rb != null)
-                rb.gravityScale = gravityDown / Physics2D.gravity.magnitude;
+            HandleLongDash();
+            return;
         }
 
-
-        void Update()
+        if (dashFrozen)
         {
-            inputX = Input.GetAxisRaw("Horizontal");
-
-            if (Input.GetButtonDown("Jump"))
-                bufferTimer = jumpBuffer;
-            else
-                bufferTimer -= Time.deltaTime;
+            HandleDashFreeze();
+            return;
         }
 
-        void FixedUpdate()
+        if (isDashing)
         {
-            CheckEnvironment();
-            HandleTimers();
-            HandleHorizontal();
-            HandleFlip();
-            HandleJump();
-            ApplyGravity();
-            ClampFall();
+            HandleDash();
+            return;
         }
 
-        void HandleTimers()
+        HandleHorizontal();
+        HandleFlip();
+        HandleJump();
+        ApplyGravity();
+        ClampFall();
+    }
+
+    void HandleTimers()
+    {
+        if (isGrounded)
         {
-            if (isGrounded)
+            coyoteTimer = coyoteTime;
+
+            if (!wasGrounded)
             {
-                coyoteTimer = coyoteTime;
-
-                if (!wasGrounded)
-                {
-                    jumpsLeft = airJumps;
-                    hangTimer = 0f;
-                }
+                jumpsLeft = airJumps;
+                dashesLeft = maxDashes;
+                hangTimer = 0f;
             }
-            else
-            {
-                coyoteTimer -= Time.fixedDeltaTime;
-            }
-
-            wasGrounded = isGrounded;
+        }
+        else
+        {
+            coyoteTimer -= Time.fixedDeltaTime;
         }
 
-        void HandleHorizontal()
-        {
-            float targetSpeed = inputX * topSpeed;
-            float speedDiff = targetSpeed - rb.linearVelocity.x;
+        wasGrounded = isGrounded;
+    }
 
-            if (isGrounded && Mathf.Abs(inputX) > 0.01f)
+    void HandleHorizontal()
+    {
+        float targetSpeed = inputX * topSpeed;
+        float speedDiff = targetSpeed - rb.linearVelocity.x;
+
+        if (isGrounded && Mathf.Abs(inputX) > 0.01f)
+        {
+            rb.linearVelocity = new Vector2(targetSpeed, rb.linearVelocity.y);
+            return;
+        }
+
+        float control = isGrounded ? 1f : airControlMultiplier;
+        float rate = Mathf.Abs(targetSpeed) > 0.01f ? accel : decel;
+        rate *= control;
+
+        float movement = Mathf.Clamp(
+            speedDiff,
+            -rate * Time.fixedDeltaTime,
+            rate * Time.fixedDeltaTime
+        );
+
+        rb.linearVelocity += Vector2.right * movement;
+    }
+
+    void HandleJump()
+    {
+        if (bufferTimer <= 0f) return;
+
+        if (coyoteTimer > 0f)
+            DoJump();
+        else if (jumpsLeft > 0)
+        {
+            DoJump();
+            jumpsLeft--;
+        }
+    }
+
+    void DoJump()
+    {
+        rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpVelocity);
+        bufferTimer = 0f;
+        coyoteTimer = 0f;
+        hangTimer = hangTime;
+    }
+
+    void ApplyGravity()
+    {
+        if (rb.linearVelocity.y > 0f)
+        {
+            if (hangTimer > 0f && rb.linearVelocity.y <= 0.1f)
             {
-                rb.linearVelocity = new Vector2(targetSpeed, rb.linearVelocity.y);
+                hangTimer -= Time.fixedDeltaTime;
+                rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
+                rb.gravityScale = 0f;
                 return;
             }
 
-            float control = isGrounded ? 1f : airControlMultiplier;
-            float rate = Mathf.Abs(targetSpeed) > 0.01f ? accel : decel;
-            rate *= control;
+            rb.gravityScale = gravityUp / Physics2D.gravity.magnitude;
+        }
+        else
+        {
+            rb.gravityScale = gravityDown / Physics2D.gravity.magnitude;
+        }
+    }
 
-            float movement = Mathf.Clamp(
-                speedDiff,
-                -rate * Time.fixedDeltaTime,
-                rate * Time.fixedDeltaTime
-            );
+    void ClampFall()
+    {
+        if (rb.linearVelocity.y < -maxFallSpeed)
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, -maxFallSpeed);
+    }
 
-            rb.linearVelocity += Vector2.right * movement;
+    // ===== NORMAL DASH =====
+    void TryDash()
+    {
+        if (dashesLeft <= 0 || isDashing || isLongDashing) return;
+
+        dashDir = GetDashDirection();
+        dashFrozen = true;
+        dashFreezeTimer = dashFreezeTime;
+
+        rb.linearVelocity = Vector2.zero;
+        rb.gravityScale = 0f;
+        dashesLeft--;
+    }
+
+    void HandleDashFreeze()
+    {
+        dashFreezeTimer -= Time.fixedDeltaTime;
+        rb.linearVelocity = Vector2.zero;
+
+        if (dashFreezeTimer <= 0f)
+        {
+            dashFrozen = false;
+            isDashing = true;
+            dashTimer = dashTime;
+        }
+    }
+
+    void HandleDash()
+    {
+        dashTimer -= Time.fixedDeltaTime;
+        rb.linearVelocity = dashDir * dashSpeed;
+
+        if (dashTimer <= 0f)
+        {
+            isDashing = false;
+            rb.linearVelocity = Vector2.zero;
+            rb.gravityScale = defaultGravity;
+        }
+    }
+
+    // ===== LONG DASH (RAYCAST) =====
+    void TryLongDash()
+    {
+        if (isDashing || isLongDashing) return;
+
+        dashDir = GetDashDirection();
+        isLongDashing = true;
+
+        longDashOffsetDir = dashDir.normalized * longDashOffset;
+
+        rb.gravityScale = 0f;
+        rb.linearVelocity = Vector2.zero;
+    }
+
+    void HandleLongDash()
+    {
+        Vector2 currentPos = rb.position;
+        Vector2 rayOrigin = currentPos + longDashOffsetDir;
+
+        float moveDist = longDashSpeed * Time.fixedDeltaTime;
+
+        RaycastHit2D hit = Physics2D.Raycast(
+            rayOrigin,
+            dashDir,
+            moveDist + longDashProbeDistance,
+            groundLayer
+        );
+
+        Debug.DrawRay(rayOrigin, dashDir * (moveDist + longDashProbeDistance), Color.red);
+
+        if (hit)
+        {
+            Vector2 stopPos = hit.point - dashDir * longDashStopOffset;
+            rb.MovePosition(stopPos);
+            EndLongDash();
+            return;
         }
 
-        void HandleJump()
+        rb.MovePosition(currentPos + dashDir * moveDist);
+    }
+
+    void EndLongDash()
+    {
+        isLongDashing = false;
+        rb.gravityScale = defaultGravity;
+    }
+
+    Vector2 GetDashDirection()
+    {
+        Vector2 input = new Vector2(
+            Input.GetAxisRaw("Horizontal"),
+            Input.GetAxisRaw("Vertical")
+        );
+
+        return input.sqrMagnitude > 0.01f
+            ? input.normalized
+            : new Vector2(facingDir, 0f);
+    }
+
+    void CheckEnvironment()
+    {
+        isGrounded = Physics2D.OverlapBox(
+            groundCheck.position,
+            groundCheckSize,
+            0f,
+            groundLayer
+        );
+    }
+
+    void HandleFlip()
+    {
+        if (!flipOnInput) return;
+        if (Mathf.Abs(inputX) < 0.01f) return;
+
+        float dir = Mathf.Sign(inputX);
+        if (dir == facingDir) return;
+
+        facingDir = dir;
+        Vector3 scale = transform.localScale;
+        scale.x = Mathf.Abs(scale.x) * facingDir;
+        transform.localScale = scale;
+    }
+
+    void OnDrawGizmos()
+    {
+        if (groundCheck != null)
         {
-            if (bufferTimer <= 0f) return;
-
-            if (coyoteTimer > 0f)
-            {
-                DoJump();
-            }
-            else if (jumpsLeft > 0)
-            {
-                DoJump();
-                jumpsLeft--;
-            }
-        }
-
-        void DoJump()
-        {
-            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpVelocity);
-            bufferTimer = 0f;
-            coyoteTimer = 0f;
-            hangTimer = hangTime;
-        }
-
-        void ApplyGravity()
-        {
-            if (rb.linearVelocity.y > 0f)
-            {
-                if (hangTimer > 0f && rb.linearVelocity.y <= 0.1f)
-                {
-                    hangTimer -= Time.fixedDeltaTime;
-                    rb.linearVelocity = new Vector2(rb.linearVelocity.x, 0f);
-                    rb.gravityScale = 0f;
-                    return;
-                }
-
-                rb.gravityScale = gravityUp / Physics2D.gravity.magnitude;
-            }
-            else
-            {
-                rb.gravityScale = gravityDown / Physics2D.gravity.magnitude;
-            }
-        }
-
-        void ClampFall()
-        {
-            if (rb.linearVelocity.y < -maxFallSpeed)
-                rb.linearVelocity = new Vector2(rb.linearVelocity.x, -maxFallSpeed);
-        }
-
-        void CheckEnvironment()
-        {
-            isGrounded = Physics2D.OverlapBox(
-                groundCheck.position,
-                groundCheckSize,
-                0f,
-                groundLayer
-            );
-        }
-
-        void HandleFlip()
-        {
-            if (!flipOnInput) return;
-            if (Mathf.Abs(inputX) < 0.01f) return;
-
-            float dir = Mathf.Sign(inputX);
-            if (dir == facingDir) return;
-
-            facingDir = dir;
-            Vector3 scale = transform.localScale;
-            scale.x = Mathf.Abs(scale.x) * facingDir;
-            transform.localScale = scale;
-        }
-
-        void OnDrawGizmos()
-        {
-            if (groundCheck != null)
-            {
-                Gizmos.color = Color.yellow;
-                Gizmos.DrawWireCube(groundCheck.position, groundCheckSize);
-            }
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawWireCube(groundCheck.position, groundCheckSize);
         }
     }
 }
+

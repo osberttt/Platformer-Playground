@@ -1,6 +1,5 @@
 using UnityEditor;
 using UnityEngine;
-using Common;
 
 [CustomEditor(typeof(PlayerMovement))]
 public class PlayerMovementEditor : Editor
