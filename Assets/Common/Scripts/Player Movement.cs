@@ -31,6 +31,8 @@ namespace Common
 
         [Header("Facing")] public bool flipOnInput = true;
 
+        [Header("Controls")] public KeyCode jumpKey = KeyCode.Space;
+
         Rigidbody2D rb;
 
         float accel;
@@ -78,7 +80,7 @@ namespace Common
         {
             inputX = Input.GetAxisRaw("Horizontal");
 
-            if (Input.GetButtonDown("Jump"))
+            if (Input.GetKeyDown(jumpKey))
                 bufferTimer = jumpBuffer;
             else
                 bufferTimer -= Time.deltaTime;

@@ -838,7 +838,7 @@ MonoBehaviour:
       sizeOverridden: 0
     m_ContainerData:
     - containerId: overlay-toolbar__top
-      scrollOffset: 0
+      scrollOffset: 108
     - containerId: overlay-toolbar__left
       scrollOffset: 0
     - containerId: overlay-container--left
@@ -879,9 +879,9 @@ MonoBehaviour:
   m_AudioPlay: 0
   m_DebugDrawModesUseInteractiveLightBakingData: 0
   m_Position:
-    m_Target: {x: 0.71010995, y: 5.4782367, z: 0.019766694}
+    m_Target: {x: 6.823754, y: 4.8721824, z: -0.18848817}
     speed: 2
-    m_Value: {x: 0.71010995, y: 5.4782367, z: 0.019766694}
+    m_Value: {x: 6.823754, y: 4.8721824, z: -0.18848817}
   m_RenderMode: 0
   m_CameraMode:
     drawMode: 0
@@ -931,9 +931,9 @@ MonoBehaviour:
     speed: 2
     m_Value: {x: 0, y: 0, z: 0, w: 1}
   m_Size:
-    m_Target: 8.023187
+    m_Target: 19.562923
     speed: 2
-    m_Value: 8.023187
+    m_Value: 19.562923
   m_Ortho:
     m_Target: 1
     speed: 2
@@ -1233,7 +1233,7 @@ MonoBehaviour:
   m_MinSize: {x: 100, y: 112}
   m_MaxSize: {x: 8096, y: 16192}
   vertical: 1
-  controlID: 54
+  controlID: 78
   draggingID: 0
 --- !u!114 &12
 MonoBehaviour:
@@ -1303,13 +1303,14 @@ MonoBehaviour:
     m_TreeViewState:
       scrollPos: {x: 0, y: 0}
       m_SelectedIDs:
-      - m_Data: 50416
+      - m_Data: -2780
       m_LastClickedID:
-        m_Data: 50416
+        m_Data: -2780
       m_ExpandedIDs:
+      - m_Data: -2778
       - m_Data: -1314
-      - m_Data: 50456
-      - m_Data: 50462
+      - m_Data: 51116
+      - m_Data: 51154
       m_RenameOverlay:
         m_UserAcceptedRename: 0
         m_Name: 
@@ -1410,7 +1411,7 @@ MonoBehaviour:
     m_SkipHidden: 0
     m_SearchArea: 1
     m_Folders:
-    - Assets
+    - Packages/com.unity.test-framework/UnityEditor.TestRunner/GUI
     m_Globs: []
     m_ProductIds: 
     m_AnyWithAssetOrigin: 0
@@ -1420,29 +1421,25 @@ MonoBehaviour:
   m_ViewMode: 1
   m_StartGridSize: 64
   m_LastFolders:
-  - Assets
+  - Packages/com.unity.test-framework/UnityEditor.TestRunner/GUI
   m_LastFoldersGridSize: -1
   m_LastProjectPath: C:\unity\Platformer Playground
   m_LockTracker:
     m_IsLocked: 0
   m_LastLocalAssetsSearchArea: 1
   m_FolderTreeState:
-    scrollPos: {x: 0, y: 0}
+    scrollPos: {x: 0, y: 388.66666}
     m_SelectedIDs:
-    - m_Data: 50606
+    - m_Data: 50992
     m_LastClickedID:
-      m_Data: 50606
+      m_Data: 50992
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 50606
-    - m_Data: 50912
+    - m_Data: 50614
+    - m_Data: 50918
+    - m_Data: 50920
     - m_Data: 50972
-    - m_Data: 50976
-    - m_Data: 50982
-    - m_Data: 51032
-    - m_Data: 51034
-    - m_Data: 51036
-    - m_Data: 51038
+    - m_Data: 50994
     - m_Data: 1000000000
     - m_Data: 2147483647
     m_RenameOverlay:
@@ -1477,7 +1474,7 @@ MonoBehaviour:
       m_Data: 0
     m_ExpandedIDs:
     - m_Data: 0
-    - m_Data: 50606
+    - m_Data: 50614
     m_RenameOverlay:
       m_UserAcceptedRename: 0
       m_Name: 
@@ -1505,8 +1502,8 @@ MonoBehaviour:
       m_ResourceFile: 
   m_ListAreaState:
     m_SelectedInstanceIDs:
-    - m_Data: 50416
-    m_LastClickedInstanceID: 50416
+    - m_Data: -2780
+    m_LastClickedInstanceID: -2780
     m_HadKeyboardFocusLastEvent: 1
     m_ExpandedInstanceIDs:
     - m_Data: 48794
